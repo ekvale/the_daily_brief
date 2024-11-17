@@ -1,0 +1,4 @@
+pdfkit==1.0.0
+pydf==12
+pytz==2024.1
+watchdog==4.0.1

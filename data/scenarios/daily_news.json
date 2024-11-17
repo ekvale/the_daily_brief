@@ -1,0 +1,14 @@
+{
+    "national_security": [
+        {"headline": "Cyberattack Disrupts Key Infrastructure", "priority": "High"},
+        {"headline": "Diplomatic Tensions in Eastern Europe", "priority": "Medium"}
+    ],
+    "domestic_affairs": [
+        {"headline": "Healthcare Bill Faces Critical Vote", "priority": "High"},
+        {"headline": "Nationwide Teachers' Strike Looms", "priority": "Medium"}
+    ],
+    "international_relations": [
+        {"headline": "Trade Agreement with Pacific Allies Near Completion", "priority": "Low"},
+        {"headline": "UN Climate Summit Faces Delays", "priority": "Medium"}
+    ]
+}

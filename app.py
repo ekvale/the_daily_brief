@@ -90,8 +90,6 @@ def main_app():
     with tabs[5]:
         admin_tab()
 
-    # Debugging output (Optional, can be removed in production)
-    st.write("Loaded Cabinet Members:", st.session_state.cabinet_members)
 
 # Main logic
 if not st.session_state.logged_in:

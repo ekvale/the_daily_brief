@@ -2,7 +2,6 @@ import streamlit as st
 from src.config.rss_feeds import fetch_rss_feed, RSS_FEEDS
 from src.briefing.consult import consult_advisor, consult_cabinet_member
 from src.common.advisors import advisors
-import random
 
 
 def render_morning_briefing(rss_feeds, cabinet_members):
@@ -18,8 +17,9 @@ def render_morning_briefing(rss_feeds, cabinet_members):
 
 def display_category_with_advisors_and_cabinet(category, feeds, cabinet_members):
     """Display RSS feed headlines and options to consult advisors and cabinet members for a category."""
-    if f"{category}_story" not in st.session_state:
-        st.session_state[f"{category}_story"] = None
+    # Initialize session state for story index
+    if f"{category}_story_index" not in st.session_state:
+        st.session_state[f"{category}_story_index"] = 0
 
     # Compile all stories for the category
     all_stories = []
@@ -34,13 +34,19 @@ def display_category_with_advisors_and_cabinet(category, feeds, cabinet_members)
         st.warning(f"No stories available for {category}.")
         return
 
-    # Display a single story at a time
-    if st.session_state[f"{category}_story"] is None or st.button(f"Show Another Story ({category})"):
-        st.session_state[f"{category}_story"] = random.choice(all_stories)
+    # Get the current story index and display it
+    current_index = st.session_state[f"{category}_story_index"]
+    story = all_stories[current_index]
 
-    story = st.session_state[f"{category}_story"]
     st.markdown(f"### {story['title']}")
     st.markdown(f"[Read full story]({story['link']})")
+
+    # Navigation: Next Story Button
+    if st.button(f"Next Story ({category})"):
+        if current_index < len(all_stories) - 1:
+            st.session_state[f"{category}_story_index"] += 1
+        else:
+            st.warning("No more stories available.")
 
     # Allow consultation with advisors and cabinet members
     st.subheader("Consultation Options")
@@ -87,9 +93,9 @@ def display_advisor_and_cabinet_dropdowns(news_story, category, cabinet_members)
 def get_advisors_for_category(category):
     """Retrieve advisors relevant to a category, including Proponent and Opponent advisors."""
     category_mapping = {
-        "national_security": ["Secret Advisor", "Political Advisor (Classic)", "The Constitutional Scholar"],
-        "domestic_affairs": ["Economic Advisor", "Political Advisor (Humanitarian Visionary)", "The Constitutional Scholar"],
-        "international_relations": ["Political Advisor (Modern)", "Political Advisor (Diplomatic Genius)", "The Constitutional Scholar"],
+        "national_security": ["Secret Advisor", "Political Advisor (Classic)", "The Constitutional Scholar", "Cowboy Curt"],
+        "domestic_affairs": ["Economic Advisor", "Political Advisor (Humanitarian Visionary)", "The Constitutional Scholar", "Cowboy Curt"],
+        "international_relations": ["Political Advisor (Modern)", "Political Advisor (Diplomatic Genius)", "The Constitutional Scholar", "Cowboy Curt"],
     }
     advisor_keys = category_mapping.get(category, [])
     # Always include Proponent and Opponent Advisors

@@ -10,6 +10,7 @@ from src.cabinet.cabinet_utils import load_cabinet_members
 from src.cabinet.cabinet_db import initialize_database, get_cabinet_members
 from src.predictions.prediction_admin import admin_tab
 from src.predictions.prediction_user import user_tab
+from src.briefing.advisor_management import render_advisor_management
 from dotenv import load_dotenv
 
 # Initialize database and load data into session state
@@ -60,7 +61,8 @@ def main_app():
         "Morning Briefing",
         "Cabinet Selection",
         "Cabinet Management",
-        "National and Global Data",
+        "Advisor Management",
+        "National and Global Data",  # Fixed comma
         "Prediction Game",
         "Admin Panel"
     ]
@@ -78,16 +80,20 @@ def main_app():
     with tabs[2]:
         render_cabinet_management()
 
-    # Tab 3: National and Global Data
+    # Tab 3: Advisor Management
     with tabs[3]:
+        render_advisor_management()
+
+    # Tab 4: National and Global Data
+    with tabs[4]:
         render_data_tab()
 
-    # Tab 4: Prediction Game
-    with tabs[4]:
+    # Tab 5: Prediction Game
+    with tabs[5]:
         user_tab()
 
-    # Tab 5: Admin Panel
-    with tabs[5]:
+    # Tab 6: Admin Panel
+    with tabs[6]:
         admin_tab()
 
 

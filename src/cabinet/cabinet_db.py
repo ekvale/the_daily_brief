@@ -1,12 +1,38 @@
 import sqlite3
-from src.cabinet.cabinet_defaults import CABINET_OPTIONS
+import json
+import os
+from src.common.advisors import advisors  # Import data from advisors.py
 
-DB_FILE = "cabinet_members.db"
+DB_FILE = "database.db"
+UPLOAD_FOLDER = "uploaded_images"
+
+# Ensure the upload folder exists
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def initialize_database():
-    """Initialize the database with the required table and ensure all columns exist."""
+    """Initialize the database with the required tables and populate initial data."""
     connection = sqlite3.connect(DB_FILE)
     cursor = connection.cursor()
+
+    # Create the advisors table if it doesn't exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS advisors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            skill TEXT,
+            personality TEXT,
+            expertise TEXT,
+            backstory TEXT,
+            motivations TEXT
+        )
+    """)
+
+    # Add the profile_picture column if it doesn't exist
+    try:
+        cursor.execute("ALTER TABLE advisors ADD COLUMN profile_picture TEXT")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
 
     # Create the cabinet_members table if it doesn't exist
     cursor.execute("""
@@ -19,55 +45,67 @@ def initialize_database():
             backstory TEXT,
             motivations TEXT,
             profile_picture TEXT,
-            skills TEXT
+            skills TEXT,
+            notes TEXT,
+            links TEXT
         )
     """)
 
-    # Add missing columns for notes and links
-    try:
-        cursor.execute("ALTER TABLE cabinet_members ADD COLUMN notes TEXT")
-    except sqlite3.OperationalError:
-        # Column already exists
-        pass
+    connection.commit()
 
-    try:
-        cursor.execute("ALTER TABLE cabinet_members ADD COLUMN links TEXT")
-    except sqlite3.OperationalError:
-        # Column already exists
-        pass
+    # Populate initial advisors if the table is empty
+    cursor.execute("SELECT COUNT(*) FROM advisors")
+    if cursor.fetchone()[0] == 0:
+        populate_advisors_from_file(cursor)
 
     connection.commit()
     connection.close()
 
 
-    # Populate database with default values if empty
-    populate_defaults()
+
+def populate_advisors_from_file(cursor):
+    """Populate the advisors table with data from advisors.py."""
+    for advisor_role, details in advisors.items():
+        cursor.execute("""
+            INSERT INTO advisors (name, skill, personality, expertise, backstory, motivations, profile_picture)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            details.get("Name", "Unknown"),
+            details.get("Skill", "Not Specified"),
+            details.get("Personality", "Not Specified"),
+            details.get("Expertise", "Not Specified"),
+            details.get("Backstory", "Not Available"),
+            details.get("Motivations", "Not Available"),
+            details.get("ProfilePicture", None)  # Use None if no image is defined
+        ))
 
 
-def populate_defaults():
-    """Populate the database with default values if no records exist."""
+def get_advisors():
+    """Retrieve all advisors from the database."""
+    connection = sqlite3.connect(DB_FILE)
+    cursor = connection.cursor()
+    cursor.execute("SELECT id, name, skill, personality, expertise, backstory, motivations, profile_picture FROM advisors")
+    advisors = cursor.fetchall()
+    connection.close()
+    return advisors
+
+
+def update_advisor_profile_picture(advisor_id, uploaded_file):
+    """Update the profile picture of an advisor."""
     connection = sqlite3.connect(DB_FILE)
     cursor = connection.cursor()
 
-    # Check if the table is already populated
-    cursor.execute("SELECT COUNT(*) FROM cabinet_members")
-    if cursor.fetchone()[0] == 0:
-        for role, details in CABINET_OPTIONS.items():
-            skills = "{}"  # Placeholder for skills JSON (to be implemented)
-            cursor.execute("""
-                INSERT INTO cabinet_members (role, name, skill, personality, expertise, backstory, motivations, profile_picture, skills)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                role,
-                details.get("Name", "Unknown"),
-                details.get("Skill", "Not Specified"),
-                details.get("Personality", "Not Specified"),
-                details.get("Expertise", "Not Specified"),
-                details.get("Backstory", "Not Available"),
-                details.get("Motivations", "Not Available"),
-                details.get("Profile Picture", None),
-                skills
-            ))
+    # Save the uploaded file to the upload folder
+    file_path = os.path.join(UPLOAD_FOLDER, f"{advisor_id}_{uploaded_file.name}")
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    # Update the database with the file path
+    cursor.execute("""
+        UPDATE advisors
+        SET profile_picture = ?
+        WHERE id = ?
+    """, (file_path, advisor_id))
     connection.commit()
     connection.close()
 
@@ -79,11 +117,9 @@ def get_cabinet_members():
 
     cursor.execute("SELECT * FROM cabinet_members")
     rows = cursor.fetchall()
-
     connection.close()
 
-    # Convert rows to a dictionary for easier handling
-    members = {
+    return {
         row[0]: {
             "Name": row[1],
             "Skill": row[2],
@@ -92,14 +128,12 @@ def get_cabinet_members():
             "Backstory": row[5],
             "Motivations": row[6],
             "Profile Picture": row[7],
-            "Skills": eval(row[8]) if row[8] else {},  # Convert stringified JSON to dictionary
-            "Notes": row[9] if len(row) > 9 else "",  # Handle missing Notes
-            "Links": row[10].split(", ") if len(row) > 10 and row[10] else []  # Convert string to list
+            "Skills": json.loads(row[8]) if row[8] else {},
+            "Notes": row[9] if len(row) > 9 else "",
+            "Links": row[10].split(", ") if len(row) > 10 and row[10] else []
         }
         for row in rows
     }
-    return members
-
 
 
 def update_cabinet_member(role, details):
@@ -107,8 +141,8 @@ def update_cabinet_member(role, details):
     connection = sqlite3.connect(DB_FILE)
     cursor = connection.cursor()
 
-    skills = str(details.get("Skills", {}))  # Convert dictionary to string for storage
-    links = ", ".join(details.get("Links", []))  # Convert list of links to comma-separated string
+    skills = json.dumps(details.get("Skills", {}))
+    links = ", ".join(details.get("Links", []))
     cursor.execute("""
         UPDATE cabinet_members
         SET name = ?, skill = ?, personality = ?, expertise = ?, backstory = ?, 
@@ -130,3 +164,6 @@ def update_cabinet_member(role, details):
     connection.commit()
     connection.close()
 
+
+if __name__ == "__main__":
+    initialize_database()
